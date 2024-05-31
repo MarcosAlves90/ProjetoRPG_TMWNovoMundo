@@ -1,33 +1,34 @@
-from config import color,line,clear_screen,line_down,line_up,exit_game,pause,invalid,print_text
+import math
+from config import color,line,clear_screen,line_down,line_up,exit_game,pause,invalid,print_text,force_exit
 
 class Player:
-    def __init__(self, name=None, race=None, race_bonus=None, race_bonus1=None, race_bonus2=None, race_desc=None, combat=None, combat_type=None, combat_desc=None, origin=None, origin_name=None, origin_desc=None, life=None, defense=None, attack=None, energy=None):
+    def __init__(self, name=None, race=None, race_bonus=None, race_bonus1=None, race_bonus2=None, race_desc=None, combat=None, combat_type=None, combat_desc=None, origin=None, origin_name=None, origin_desc=None, life=None, defense=None, attack=None, energy=None, darkness=5):
         self.name=name
         # --------------------------
+        # RACE
         self.race=race
         self.race_bonus=race_bonus
         self.race_bonus1=race_bonus1
         self.race_bonus2=race_bonus2
         self.race_desc=race_desc
         # --------------------------
+        # COMBAT
         self.combat=combat
         self.combat_type=combat_type
         self.combat_desc=combat_desc
         # --------------------------
+        # ORIGIN
         self.origin=origin
         self.origin_name=origin_name
         self.origin_desc=origin_desc
         # --------------------------
+        # STATUS
         self.life=life
         self.defense=defense
         self.attack=attack
         self.energy=energy
+        self.darkness=darkness
         # --------------------------
-
-life = 15
-defense = 5
-attack = 5
-energy = 5
 
 # -----------------------------------------------
 
@@ -64,7 +65,19 @@ def Bed(player):
 
 def Mirror(player):
     clear_screen()
+    common_lines = {
+        'Common': {1: 'The mirror shows the image of someone tired.'},
+    }
+    lines = {
+        'Human': {1: f'{common_lines["Common"][1]}\nYou should take care of those dark circles.'},
+        'Android': {1: f'{common_lines["Common"][1]}\nIt\'s time to recharge your batteries.'},
+        'Cyborg': {1: f'{common_lines["Common"][1]}\nMaybe using so many implants is not good for you.'},
+        'Ultra-Human': {1: f'{common_lines["Common"][1]}\nYour energy is failing again.'}
+    }
+    darkness_level = math.floor(player.darkness/5)
+    print(lines[player.race][1 if darkness_level < 1 else darkness_level])
     pause()
+    Bedroom(player)
 
 def Wardrobe(player):
     clear_screen()
@@ -80,11 +93,15 @@ def Mission(player):
 
 def Door(player):
     clear_screen()
+    House(player)
     pause()
 
 def Status(player):
     clear_screen()
     pause()
+
+def House(player):
+    print('a')
 
 def Bedroom(player):
     while True:
@@ -104,10 +121,10 @@ def choose_race():
         line("Choose your race")
         print()
         races = {
-            "1": {"name": "Human", "bonus": "+5 HP -5 DEF", "bonus1": f"{life} + 5", "bonus2": f"{defense} - 5", "description": "Humans are beings made of fluids, flesh, and bones.\nTheir composition is 99%% oxygen, carbon, hydrogen, calcium, and phosphorus.\nThey have eyes, ears, nostrils, and a mouth, in addition to a brain for thinking and feeling.\nTheir brain is composed of interconnected neurons, capable of processing information and thoughts.\nTheir limbs are formed by tissues and bones, allowing various categories of movement.\nThey are born from a biological mother and father, through sexual reproduction."},
-            "2": {"name": "Android", "bonus": "+5 DEF -5 HP", "bonus1": f"{defense} + 5", "bonus2": f"{life} - 5", "description": "Androids are beings made of vandal titanium, detroid iron, and nano chrome-barium alloy.\nTheir composition is 99%% silicon, chrome-barium, copper, iron, and titanium.\nThey do not have eyes, ears, nostrils, or a mouth. Not even a brain to think or feel.\nTheir processor is composed of interconnected circuits, capable of processing data and variables.\nTheir limbs are formed by metal alloys and rubberized tissues, allowing various categories of movement.\nThey are built by a factory, being incapable of reproducing."},
-            "3": {"name": "Cyborg", "bonus": "+5 ATK -5 NRG", "bonus1": f"{attack} + 5", "bonus2": f"{energy} - 5", "description": "Cyborgs are beings made of fluids, flesh, bones, rubber, and metals.\nTheir composition is imprecise and variable, depending heavily on the degree of modification.\nThey may or may not have eyes, ears, nostrils, and a mouth, in addition to a brain or processor.\nTheir mechanical limbs are known as 'Chromes', allowing for the enhancement of physical and/or mental capabilities.\nThey are born in the same way as humans, but are modified through surgeries and implants.\nThey can modify themselves to the limit of their biological bodies."},
-            "4": {"name": "Ultra-Human", "bonus": "+5 NRG -5 ATK", "bonus1": f"{energy} + 5", "bonus2": f"{attack} - 5", "description": "Ultra-Humans are beings made of fluids, flesh, and bones.\nTheir composition is 99% oxygen, carbon, hydrogen, calcium, and phosphorus.\nThey have eyes, ears, nostrils, and a mouth, in addition to a brain for thinking and feeling.\nTheir brain is composed of interconnected neurons, capable of processing information and thoughts.\nTheir limbs are formed by tissues and bones, allowing various categories of movement.\nThey are born from a biological mother and father, through sexual reproduction.\nThe difference between them and humans is the ability to manipulate energy, allowing the use of special abilities."}
+            "1": {"name": "Human", "bonus": "+5 HP -5 DEF", "bonus1": 5, "bonus2": 5, "description": "Humans are beings made of fluids, flesh, and bones.\nTheir composition is 99%% oxygen, carbon, hydrogen, calcium, and phosphorus.\nThey have eyes, ears, nostrils, and a mouth, in addition to a brain for thinking and feeling.\nTheir brain is composed of interconnected neurons, capable of processing information and thoughts.\nTheir limbs are formed by tissues and bones, allowing various categories of movement.\nThey are born from a biological mother and father, through sexual reproduction."},
+            "2": {"name": "Android", "bonus": "+5 DEF -5 HP", "bonus1": 5, "bonus2": 5, "description": "Androids are beings made of vandal titanium, detroid iron, and nano chrome-barium alloy.\nTheir composition is 99%% silicon, chrome-barium, copper, iron, and titanium.\nThey do not have eyes, ears, nostrils, or a mouth. Not even a brain to think or feel.\nTheir processor is composed of interconnected circuits, capable of processing data and variables.\nTheir limbs are formed by metal alloys and rubberized tissues, allowing various categories of movement.\nThey are built by a factory, being incapable of reproducing."},
+            "3": {"name": "Cyborg", "bonus": "+5 ATK -5 NRG", "bonus1": 5, "bonus2": 5, "description": "Cyborgs are beings made of fluids, flesh, bones, rubber, and metals.\nTheir composition is imprecise and variable, depending heavily on the degree of modification.\nThey may or may not have eyes, ears, nostrils, and a mouth, in addition to a brain or processor.\nTheir mechanical limbs are known as 'Chromes', allowing for the enhancement of physical and/or mental capabilities.\nThey are born in the same way as humans, but are modified through surgeries and implants.\nThey can modify themselves to the limit of their biological bodies."},
+            "4": {"name": "Ultra-Human", "bonus": "+5 NRG -5 ATK", "bonus1": 5, "bonus2": 5, "description": "Ultra-Humans are beings made of fluids, flesh, and bones.\nTheir composition is 99% oxygen, carbon, hydrogen, calcium, and phosphorus.\nThey have eyes, ears, nostrils, and a mouth, in addition to a brain for thinking and feeling.\nTheir brain is composed of interconnected neurons, capable of processing information and thoughts.\nTheir limbs are formed by tissues and bones, allowing various categories of movement.\nThey are born from a biological mother and father, through sexual reproduction.\nThe difference between them and humans is the ability to manipulate energy, allowing the use of special abilities."}
         }
 
         for key, value in races.items():
@@ -313,6 +330,23 @@ def startd(player):
         "Yesterday was long and stressful, but forgettable, like every other day."
     ])
     pause()
+    player.life = 15
+    player.defense, player.attack, player.energy = 5, 5, 5
+    if player.race == 'Human':
+        player.life = player.life + player.race_bonus1
+        player.defense = player.defense - player.race_bonus2
+    elif player.race == 'Android':
+        player.defense = player.defense + player.race_bonus1
+        player.life = player.life - player.race_bonus2
+    elif player.race == 'Cyborg':
+        player.attack = player.attack + player.race_bonus1
+        player.energy = player.energy - player.race_bonus2
+    elif player.race == 'Ultra-Human':
+        player.energy = player.energy + player.race_bonus1
+        player.attack = player.attack - player.race_bonus2
+    else:
+        print('Error: player.race has not been defined.')
+        force_exit()
     Bedroom(player)
 
 def play():

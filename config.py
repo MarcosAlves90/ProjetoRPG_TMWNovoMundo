@@ -1,4 +1,4 @@
-import os, time
+import os, time, sys
 from colorama import Fore
 
 def color(c):
@@ -36,3 +36,5 @@ def print_text(texts, delay=0):
         print(text)
         time.sleep(delay)
 
+def force_exit():
+    sys.exit()

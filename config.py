@@ -31,7 +31,9 @@ def clear_screen():
 
 def exit_game(phrase):
     clear_screen()
-    print('\n' + phrase)
+    print(phrase)
+    pause()
+    force_exit()
 
 
 def pause():

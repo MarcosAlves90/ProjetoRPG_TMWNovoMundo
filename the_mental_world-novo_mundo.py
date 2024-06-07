@@ -1,4 +1,7 @@
 import math
+import random
+import pickle
+
 from config import color, line, clear_screen, line_down, line_up, exit_game, pause, invalid, print_text, force_exit
 
 
@@ -22,7 +25,10 @@ class Player:
                  energy=None,
                  darkness=0.00,
                  armors_quantity=1,
-                 armor_id='A1'
+                 armor_id='A1',
+                 level=1,
+                 experience=0,
+                 experience_cap=100
                  ):
         self.name = name
         # --------------------------
@@ -53,6 +59,11 @@ class Player:
         # STORE
         self.armors_quantity = armors_quantity
         self.armor_id = armor_id
+        # LEVEL
+        self.level = level
+        self.experience = experience
+        self.experience_cap = experience_cap
+        # --------------------------
 
 
 # -----------------------------------------------
@@ -85,7 +96,7 @@ def choose_area(area, player):
 
 
 def armors():
-    armors_list = {
+    armors_list: dict[str, dict[str, str, str | int | bool] | dict[str, str | int | bool] | dict[str, str | int | bool]] = {
         '1': {'ID': 'A1', 'name': 'Sevastopol Suit', 'DEF': 5,
               'Desc': 'A common suit for Sevastopol soldiers.'
                       'Usually used as a means of defense in '
@@ -93,30 +104,41 @@ def armors():
                       'from a few attacks. ',
               'acquired': True},
         '2': {'ID': 'A2', 'name': 'Exo-suit', 'DEF': 10, 'Desc': '', 'acquired': False},
-        '3': {'ID': 'A3', 'name': 'Nanotech Armor', 'DEF': 15, 'Desc': '', 'acquired': False},
+        '3': {'ID': 'A3', 'name': 'Nano Tech Armor', 'DEF': 15, 'Desc': '', 'acquired': False},
     }
     return armors_list
 
 
 # -----------------------------------------------
 
-def salvar(player):
+# save_game_bedroom(player) is a function that is called when the player decides to save the game.
+def save_game_bedroom(player) -> None:
     clear_screen()
+    with open('tmw_save_game.dat', 'wb') as file:
+        pickle.dump(player, file)
+    print('Game saved successfully.')
+    pause()
+    bedroom(player)
 
 
-def sair(player):
-    phrases_list = []
-    exit_game()
+# exit_game_bedroom(player) is a function that is called when the player decides to quit the game.
+def exit_game_bedroom() -> None:
+    phrases_list = ['And once again you running away from problems...',
+                    'Nightmares won\'t go away if you don\'t face them.',
+                    'Do you think this is really going to help you?',
+                    'The world won\'t change just because you\'re tired.',
+                    'You should feel sorry for yourself.']
+    exit_game(random.choice(phrases_list))
 
 
 # -----------------------------------------------
 
-def bed(player):
+def bed(player) -> None:
     while True:
         clear_screen()
         options = {
-            '1': {'name': salvar, 'desc': 'Do you want to save your progress? [Y/N]'},
-            '2': {'name': sair, 'desc': 'Do you want to quit the game? [Y/N]'}
+            '1': {'name': save_game_bedroom, 'desc': 'Do you want to save your progress? [Y/N]'},
+            '2': {'name': exit_game_bedroom, 'desc': 'Do you want to quit the game? [Y/N]'}
         }
 
         print('Sleeping might not be the best option right now...\n'
@@ -141,7 +163,7 @@ def bed(player):
             invalid()
 
 
-def mirror(player):
+def mirror(player) -> None:
     clear_screen()
     common_lines = {
         'Common': {1: 'The mirror shows the image of someone tired.'},
@@ -158,7 +180,7 @@ def mirror(player):
     bedroom(player)
 
 
-def wardrobe(player):
+def wardrobe(player) -> None:
     while True:
         clear_screen()
         common_lines = {
@@ -207,30 +229,45 @@ def mission(player):
     pause()
 
 
-def door(player):
+def door(player) -> None:
     clear_screen()
     house(player)
     pause()
 
 
-def status(player):
+def status(player) -> None:
     clear_screen()
+    print(
+        f"You are a {player.race} who fights using {player.combat} and comes from the {player.origin_name}. "
+        f"Your name is {player.name}.\n")
+    print(f"Level: {player.level} | Experience: {player.experience_cap}/{player.experience}\n"
+          f"Life: {player.life}\n"
+          f"Defense: {player.defense}\n"
+          f"Attack: {player.attack}\n"
+          f"Energy: {player.energy}\n")
+    print(f'It must be strange to use this voltage meter to measure your power...'
+          f'well, whatever.')
     pause()
+    house(player)
 
 
-def house(player):
-    print('a')
-
-
-def bedroom(player):
+def basic_choose_area(player, bc_area) -> None:
     while True:
         clear_screen()
-        line("BEDROOM")
-        x = choose_area('bedroom', player)
+        line(bc_area.upper())
+        x = choose_area(bc_area, player)
         if x:
             break
         else:
             pass
+
+
+def house(player) -> None:
+    basic_choose_area(player, 'house')
+
+
+def bedroom(player) -> None:
+    basic_choose_area(player, 'bedroom')
 
 
 # -----------------------------------------------
@@ -304,7 +341,7 @@ def choose_race():
             invalid()
 
 
-def class_definition(player, c, ct, cd):
+def class_definition(player, c, ct, cd) -> None:
     player.combat = c
     player.combat_type = ct
     player.combat_desc = cd
@@ -382,7 +419,7 @@ def choose_class(player):
             invalid()
 
 
-def origin_definition(player, o, on, od):
+def origin_definition(player, o, on, od) -> None:
     player.origin = o
     player.origin_name = on
     player.origin_desc = od
@@ -486,7 +523,7 @@ def choose_name(player):
             invalid()
 
 
-def final_definition(player):
+def final_definition(player) -> None:
     clear_screen()
     print(
         f"You are a {player.race} who fights using {player.combat} and comes from the {player.origin_name}. "
@@ -529,7 +566,7 @@ def final_definition(player):
     start_definition(player)
 
 
-def start_definition(player):
+def start_definition(player) -> None:
     clear_screen()
     color("YELLOW")
     print_text([
@@ -559,7 +596,7 @@ def start_definition(player):
     bedroom(player)
 
 
-def play():
+def play() -> None:
     clear_screen()
     print_text([
         "There was a time when the existence of energy was not known.",
@@ -606,7 +643,7 @@ def play():
     choose_race()
 
 
-def menu():
+def menu() -> None:
     color("GREEN")
     print()
     line_up("┏┳┓┓┏┏┓  ┳┳┓┏┓┳┓┏┳┓┏┓┓   ┓ ┏┏┓┳┓┓ ┳┓")
@@ -620,7 +657,7 @@ def menu():
     if response == "1":
         play()
     elif response == "2":
-        exit_game()
+        force_exit()
 
 
 menu()

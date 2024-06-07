@@ -28,7 +28,8 @@ class Player:
                  armor_id='A1',
                  level=1,
                  experience=0,
-                 experience_cap=100
+                 experience_cap=100,
+                 days=1
                  ):
         self.name = name
         # --------------------------
@@ -59,11 +60,14 @@ class Player:
         # STORE
         self.armors_quantity = armors_quantity
         self.armor_id = armor_id
+        # --------------------------
         # LEVEL
         self.level = level
         self.experience = experience
-        self.experience_cap = experience_cap
+        self.experience_cap = level * 100
         # --------------------------
+        # AGE
+        self.days = days
 
 
 # -----------------------------------------------
@@ -72,7 +76,7 @@ def choose_area(area, player):
     def areas():
         game_areas = {
             'bedroom': {1: mirror, 2: wardrobe, 3: bed, 4: door},
-            'house': {1: work, 2: mission, 3: status}
+            'house': {1: work, 2: mission, 3: status, 4:bedroom}
         }
         selected_area = game_areas[area]
         print()
@@ -96,7 +100,8 @@ def choose_area(area, player):
 
 
 def armors():
-    armors_list: dict[str, dict[str, str, str | int | bool] | dict[str, str | int | bool] | dict[str, str | int | bool]] = {
+    armors_list: dict[
+        str, dict[str, str, str | int | bool] | dict[str, str | int | bool] | dict[str, str | int | bool]] = {
         '1': {'ID': 'A1', 'name': 'Sevastopol Suit', 'DEF': 5,
               'Desc': 'A common suit for Sevastopol soldiers.'
                       'Usually used as a means of defense in '
@@ -145,13 +150,12 @@ def bed(player) -> None:
               'you know, the world won\'t change because of it.\n'
               'Enough running away from problems.\n')
         for i, VALUE in options.items():
-            print(f"[{i}] {VALUE['name'].__name__.capitalize()}")
+            print(f"[{i}] {'Save Game' if VALUE['name'] == save_game_bedroom else 'Exit Game'}")
         print()
         resp1 = input("Choose an option and press ENTER: ")
 
         if resp1 in options:
-            clear_screen()
-            print(options[resp1]['desc'] + '\nAre you sure of your choice? [Y/N]')
+            print("\n" + options[resp1]['desc'])
             resp2 = input("Choose an option and press ENTER: ")
             if resp2.lower() == 'y':
                 options[resp1]['name'](player)
@@ -205,7 +209,7 @@ def wardrobe(player) -> None:
             while True:
                 clear_screen()
                 print(f'{armors()[resp1]['name']}:\n')
-                print(f'{armors()[resp1]['Desc']}\nSelect armor? [Y/N]')
+                print(f'{armors()[resp1]['Desc']}\n\nSelect armor? [Y/N]')
                 resp2 = input('Choose an option and press ENTER: ')
                 if resp2.lower() == 'y':
                     player.armor_id = armors()[resp1]['ID']
@@ -219,9 +223,25 @@ def wardrobe(player) -> None:
             invalid()
 
 
-def work(player):
+def work(player) -> None:
     clear_screen()
-    pause()
+    darkness_level = math.floor(player.darkness)
+    work_events = {
+        1: {'evento': 'Seu chefe o pede para ficar mesmo depois do expediente.\n'
+                      'Ele disse que os relatórios estão atrasados, mas você tem certeza\n'
+                      'que os fez a poucos dias atrás.\n'
+                      'Você conta isso para o chefe mas ele o manda fazer novos.\n',
+            1: 'Temendo perder o emprego, você aceita a tarefa e refaz todo o seu trabalho.\n'
+            }
+    }
+    if player.days == 1:
+        print(f'One day or another your lies will no longer be enough.\n'
+              f'When others find out what you did, no one will stand by you.\n'
+              f'Even the worst monster is most trustworthy.')
+        pause()
+        clear_screen()
+    temp = random.randint(1,5)
+    print(f'{work_events[temp]['evento']}{work_events[temp][darkness_level]}')
 
 
 def mission(player):

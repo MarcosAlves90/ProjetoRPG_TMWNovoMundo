@@ -26,11 +26,11 @@ class Player:
                  darkness=0.00,
                  armors_quantity=1,
                  armor_id='A1',
+                 money=0,
                  level=1,
                  experience=0,
-                 experience_cap=100,
-                 days=1
-                 ):
+                 days=1,
+                 bedroom_color="YELLOW"):
         self.name = name
         # --------------------------
         # RACE
@@ -60,6 +60,7 @@ class Player:
         # STORE
         self.armors_quantity = armors_quantity
         self.armor_id = armor_id
+        self.money = money
         # --------------------------
         # LEVEL
         self.level = level
@@ -68,6 +69,9 @@ class Player:
         # --------------------------
         # AGE
         self.days = days
+        # --------------------------
+        # AREAS
+        self.bedroom_color = bedroom_color
 
 
 # -----------------------------------------------
@@ -75,8 +79,8 @@ class Player:
 def choose_area(area, player):
     def areas():
         game_areas = {
-            'bedroom': {1: mirror, 2: wardrobe, 3: bed, 4: door},
-            'house': {1: work, 2: mission, 3: status, 4:bedroom}
+            'bedroom': {1: mirror, 2: wardrobe, 3: bed, 4: window, 5: door},
+            'house': {1: work, 2: mission, 3: status, 4: store, 5: bedroom}
         }
         selected_area = game_areas[area]
         print()
@@ -107,9 +111,10 @@ def armors():
                       'Usually used as a means of defense in '
                       'combat against ultra-humans, can protect '
                       'from a few attacks. ',
-              'acquired': True},
-        '2': {'ID': 'A2', 'name': 'Exo-suit', 'DEF': 10, 'Desc': '', 'acquired': False},
-        '3': {'ID': 'A3', 'name': 'Nano Tech Armor', 'DEF': 15, 'Desc': '', 'acquired': False},
+              'acquired': True,
+              'value': 0},
+        '2': {'ID': 'A2', 'name': 'Exo-suit', 'DEF': 10, 'Desc': '', 'acquired': False, 'value': 100},
+        '3': {'ID': 'A3', 'name': 'Nano Tech Armor', 'DEF': 15, 'Desc': '', 'acquired': False, 'value': 500},
     }
     return armors_list
 
@@ -137,6 +142,82 @@ def exit_game_bedroom() -> None:
 
 
 # -----------------------------------------------
+# STORE
+
+def store(player) -> None:
+    while True:
+        clear_screen()
+        line("STORE")
+        print()
+        print(f"Money: {player.money}\n")
+        for i, value in armors().items():
+            if not value['acquired']:
+                print(f"[{i}] {value['name']}")
+        print(f'[X] Exit\n')
+        resp1 = input("Choose an option and press ENTER: ")
+        if resp1.lower() == 'x':
+            bedroom(player)
+        elif resp1 in armors() and not armors()[resp1]['acquired']:
+            while True:
+                clear_screen()
+                print(f'{armors()[resp1]['name']}:\n')
+                print(f'{armors()[resp1]['Desc']}\n\nBuy armor? [Y/N]')
+                resp2 = input('Choose an option and press ENTER: ')
+                if resp2.lower() == 'y':
+                    if player.money >= armors()[resp1]['value']:
+                        player.money -= armors()[resp1]['value']
+                        player.armors_quantity += 1
+                        armors()[resp1]['acquired'] = True
+                        store(player)
+                    else:
+                        print('\nYou don\'t have enough money.\n')
+                        pause()
+                        store(player)
+                elif resp2.lower() == 'n':
+                    store(player)
+                else:
+                    invalid()
+
+
+# -----------------------------------------------
+
+def window(player) -> None:
+    clear_screen()
+    window_events = {
+        '1': {'name': 'Close the window', 'desc': 'You close the window and the room becomes dark again.',
+              'state': "YELLOW"},
+        '2': {'name': 'Look outside', 'desc': 'The window shows the image of a world in ruins.'
+                                              '\nThe sky is red and the ground is covered with debris.'
+                                              '\nThe sun is hidden behind the clouds as if it were afraid of the world.'
+                                              '\nThe wind blows cold and strong as if it were trying to take '
+                                              'everything with it.',
+              'state': "YELLOW"},
+        '3': {'name': 'Open the window', 'desc': 'You open the window and the room becomes bright.'
+                                                 '\nThe light shines through the window, illuminating the room.',
+              'state': "BLUE"},
+    }
+    for i, value in window_events.items():
+        if value['state'] == player.bedroom_color:
+            print(f"[{i}] {value['name']}")
+        else:
+            print(f"[{i}] {value['name']}")
+
+    print()
+    resp1 = input("Choose an option and press ENTER: ")
+    if resp1 in window_events and window_events[resp1]['state'] == player.bedroom_color:
+        clear_screen()
+        if window_events[resp1]['name'] == 'Close the window':
+            color("BLUE")
+            player.bedroom_color = "BLUE"
+        elif window_events[resp1]['name'] == 'Open the window':
+            color("YELLOW")
+            player.bedroom_color = "YELLOW"
+        print(window_events[resp1]['desc'])
+        pause()
+    else:
+        invalid()
+    bedroom(player)
+
 
 def bed(player) -> None:
     while True:
@@ -203,9 +284,12 @@ def wardrobe(player) -> None:
                 print(f'Selected Armor: {value['name']}\n')
             if value['acquired']:
                 print(f"[{i}] {value['name']}")
+        print(f'[X] Exit\n')
         print()
         resp1 = input("Choose an option and press ENTER: ")
-        if resp1 in armors() and armors()[resp1]['acquired']:
+        if resp1.lower() == 'x':
+            bedroom(player)
+        elif resp1 in armors() and armors()[resp1]['acquired']:
             while True:
                 clear_screen()
                 print(f'{armors()[resp1]['name']}:\n')
@@ -223,16 +307,29 @@ def wardrobe(player) -> None:
             invalid()
 
 
+# Preciso fazer pelo menos 5 eventos de trabalho.
 def work(player) -> None:
     clear_screen()
+    player.days += 1
     darkness_level = math.floor(player.darkness)
     work_events = {
-        1: {'evento': 'Seu chefe o pede para ficar mesmo depois do expediente.\n'
-                      'Ele disse que os relatórios estão atrasados, mas você tem certeza\n'
-                      'que os fez a poucos dias atrás.\n'
-                      'Você conta isso para o chefe mas ele o manda fazer novos.\n',
-            1: 'Temendo perder o emprego, você aceita a tarefa e refaz todo o seu trabalho.\n'
-            }
+        1: {
+            'event': 'Your superior requests you to stay beyond working hours.'
+                     'He insists the reports are overdue, but you distinctly'
+                     'remember completing them a few days prior. You communicate this, but'
+                     'he insists on new ones.',
+            1: 'Concerned about job security, you comply and redo all your work.'
+        },
+        2: {
+            'event': 'A colleague invites you for a private discussion.'
+                     'He accuses you of involvement in pagan rituals in secluded places and structures.'
+                     'His only evidence is a photograph of you exiting an abandoned tower.'
+                     'While the photo is accurate, he seems to have misconstrued the true nature'
+                     'of your activities.',
+            1: 'To circumvent complications, you convince him of the cult idea.'
+               'He agrees to leave you alone if you cover his shifts for the rest of the week.'
+               'There seems to be no better alternative.'
+        }
     }
     if player.days == 1:
         print(f'One day or another your lies will no longer be enough.\n'
@@ -240,8 +337,9 @@ def work(player) -> None:
               f'Even the worst monster is most trustworthy.')
         pause()
         clear_screen()
-    temp = random.randint(1,5)
-    print(f'{work_events[temp]['evento']}{work_events[temp][darkness_level]}')
+    temp = random.randint(1, 5)
+    print(f'{work_events[temp]['evento']} + "\n" {work_events[temp][darkness_level]}')
+    pause()
 
 
 def mission(player):
@@ -283,10 +381,12 @@ def basic_choose_area(player, bc_area) -> None:
 
 
 def house(player) -> None:
+    color("YELLOW")
     basic_choose_area(player, 'house')
 
 
 def bedroom(player) -> None:
+    color(player.bedroom_color)
     basic_choose_area(player, 'bedroom')
 
 

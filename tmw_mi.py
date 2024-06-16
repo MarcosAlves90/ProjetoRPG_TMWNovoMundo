@@ -1,6 +1,8 @@
+import collections
 import math
 import random
 import pickle
+import os
 
 from config import color, line, clear_screen, line_down, line_up, exit_game, pause, invalid, print_text, force_exit
 
@@ -44,6 +46,7 @@ class Player:
         self.combat = combat
         self.combat_type = combat_type
         self.combat_desc = combat_desc
+        self.enemy_ai = []
         # --------------------------
         # ORIGIN
         self.origin = origin
@@ -57,9 +60,16 @@ class Player:
         self.energy = energy
         self.darkness = darkness
         # --------------------------
-        # STORE
+        # STORE AND WARDROBE
         self.armors_quantity = armors_quantity
         self.armor_id = armor_id
+        self.armors = {
+            '1': {'ID': 'A1', 'name': 'Sevastopol Suit', 'DEF': 5, 'acquired': True, 'value': 0},
+            '2': {'ID': 'A2', 'name': 'Exo-suit', 'DEF': 10, 'acquired': False, 'value': 100},
+            '3': {'ID': 'A3', 'name': 'Nano Tech Armor', 'DEF': 15, 'acquired': False, 'value': 500},
+        }
+        for i, value in self.armors.items():
+            value['Desc'] = armors_desc(value['name'])
         self.money = money
         # --------------------------
         # LEVEL
@@ -73,14 +83,308 @@ class Player:
         # AREAS
         self.bedroom_color = bedroom_color
 
+    def verify_level_up(self):
+        if self.experience >= self.experience_cap:
+            self.level += 1
+            self.experience -= self.experience_cap
+            self.experience_cap = self.level * 100
+            self.life += 5
+            self.defense += 5
+            self.attack += 5
+            self.energy += 5
+            # add level up message
+
 
 # -----------------------------------------------
+# MISSIONS
+
+def mission(player) -> None:
+    clear_screen()
+    line("MISSION")
+    print()
+    print(f'A blinding voice occupies your mind...\n"{player.name}, the hourglass is almost empty. Your time is up'
+          f'finishing."\n')
+    print(f'[1] Accept mission\n[X] Exit\n')
+    resp1 = input("Choose an option and press ENTER: ")
+    if resp1 == '1':
+        combat(player)
+    elif resp1.lower() == 'x':
+        house(player)
+    else:
+        invalid()
+
+
+def enemy_reactions(enemy_infos, reaction_type, reaction_category):
+    reactions_dict = {
+        'm': {
+            'attack': f'{enemy_infos["enemy"]} attacks you without showing any remorse.\n',
+            'defense': f'{enemy_infos["enemy"]} defends himself, he believes you will never be able to hit him.\n',
+            'energy': f'{enemy_infos["enemy"]} uses energy, preventing you from escaping the tower.\n',
+            'run': f'{enemy_infos["enemy"]} runs away, leaving you without your precious sand.\n',
+            'wait': f'{enemy_infos["enemy"]} waits, observing your every move.\n'
+        },
+        'p': {
+            'attack': f'You attack {enemy_infos["enemy"]} without showing any remorse.\n',
+            'defense': f'You defend yourself, believing that {enemy_infos["enemy"]} will never be able to reach you.\n',
+            'energy': f'You use energy, preventing {enemy_infos["enemy"]} from escaping the tower.\n',
+            'run': f'You run away, leaving {enemy_infos["enemy"]} without its precious sand.\n',
+            'wait': f'You wait, watching {enemy_infos["enemy"]}\'s every move.\n'
+        }
+    }
+    return reactions_dict[reaction_type][reaction_category]
+
+
+def enemy_ai_learning(player, n):
+    if len(player.enemy_ai) >= 10:
+        player.enemy_ai.insert(0, random.randint(1, n))
+        player.enemy_ai.pop()
+    else:
+        player.enemy_ai.insert(0, random.randint(1, n))
+
+
+def enemy_ai_reaction(monster, player):
+    reaction_mapping = {1: 2, 2: 3, 3: 4, 4: 1, 5: 5}
+
+    random_action = random.randint(1, 5)
+    most_common_action = int(collections.Counter(player.enemy_ai).most_common(1)[0][0])
+    chosen_action = random.choice([random_action, most_common_action])
+
+    if monster['life'] <= 10:
+        if monster['energy'] > 0:
+            return 3  # Use energy
+        else:
+            return 2  # Defend
+
+    if player.life <= 10:
+        return 1  # Attack
+
+    if monster['energy'] <= 5:
+        return 4  # Wait
+
+    return reaction_mapping[chosen_action]
+
+
+# -----------------------------------------------
+
+def get_user_input():
+    return input("Choose an option and press ENTER: ")
+
+
+def handle_user_input(monster, player, input):
+    action_mapping = {
+        '1': 1,
+        '2': 2,
+        '3': 3,
+        '4': 4,
+        '5': 5,
+        's': 's'
+    }
+
+    if input.lower() in action_mapping:
+        enemy_ai_learning(player, action_mapping[input.lower()])
+        return action_mapping[input.lower()], enemy_ai_reaction(monster, player)
+    else:
+        invalid()
+        return None, None
+
+
+# -----------------------------------------------
+
+
+def combat(player):
+
+    attack = 1
+    defense = 2
+    energy_y = 3
+    wait = 4
+    run = 5
+
+    def check_death(entity):
+        if isinstance(entity, dict):  # Se a entidade for um dicionário (inimigo)
+            return entity['life'] <= 0
+        else:  # Se a entidade for um objeto Player
+            return entity.life <= 0
+
+    def handle_death():
+        if check_death(player) and check_death(enemy_infos):
+            print_message_and_lose(f'You and {enemy_infos["enemy"]} were defeated.')
+        elif check_death(player):
+            print_message_and_lose(f'You were defeated by {enemy_infos["enemy"]}.')
+        elif check_death(enemy_infos):
+            player.experience += enemy_infos['XP'] + random.randint(1, 20)
+            player.days += 2
+            print_message_and_win(f'You defeated {enemy_infos["enemy"]}.')
+
+    def print_message_and_win(message):
+        clear_screen()
+        print_text(message)
+        pause()
+        house(player)
+
+    def print_message_and_lose(message):
+        clear_screen()
+        print_text(message)
+        pause()
+        force_exit()
+
+    def calculate_damage(attacker, defender, is_player, player_a, enemy_a):
+        if is_player:
+            damage = (attacker.attack / 2) - defender['defense'] if enemy_a == 2 else (attacker.attack / 2)
+        else:
+            damage = (attacker['attack'] / 2) - defender.defense if player_a == 2 else (attacker['attack'] / 2)
+        return max(0, damage)  # Garante que o dano mínimo seja 0
+
+    def handle_action(player_a, enemy_a, action_type):
+        action_mapping = {1: 'attack', 2: 'defense', 3: 'energy', 4: 'wait', 5: 'run'}
+
+        if player_a == action_type:
+            player_a = enemy_reactions(enemy_infos, 'p', action_mapping[action_type])
+            if action_type == attack:
+                enemy_infos['life'] -= calculate_damage(player, enemy_infos, True, player_a, enemy_a)
+            elif action_type == energy_y:
+                player.energy -= 1
+        if enemy_a == action_type:
+            enemy_a = enemy_reactions(enemy_infos, 'm', action_mapping[action_type])
+            if action_type == attack:
+                player.life -= calculate_damage(enemy_infos, player, False, player_a, enemy_a)
+            elif action_type == energy_y:
+                enemy_infos['energy'] -= 1
+
+        return player_a, enemy_a
+
+    def status_modify(player_a, enemy_a):
+        mutual_a = None
+
+        if player_a == enemy_a:
+            if player_a == run:
+                mutual_a = f'You and {enemy_infos["enemy"]} try to run away, but the tower won\'t let you.'
+                player_a, enemy_a = None, None
+            elif player_a == wait:
+                mutual_a = f'You and {enemy_infos["enemy"]} wait, observing each other.'
+                player_a, enemy_a = None, None
+
+        player_a, enemy_a = handle_action(player_a, enemy_a, attack)
+        player_a, enemy_a = handle_action(player_a, enemy_a, defense)
+        player_a, enemy_a = handle_action(player_a, enemy_a, energy_y)
+        player_a, enemy_a = handle_action(player_a, enemy_a, wait)
+        player_a, enemy_a = handle_action(player_a, enemy_a, run)
+
+        return mutual_a, player_a, enemy_a
+
+    def try_to_run():
+        energy_needed_to_run = 5
+
+        if player.energy >= energy_needed_to_run:
+            player.energy -= energy_needed_to_run
+            clear_screen()
+            print("You successfully escaped from the battle.")
+            pause()
+            return True
+        else:
+            clear_screen()
+            print("You don't have enough energy to run away.")
+            pause()
+            return False
+
+    clear_screen()
+    enemy_infos = decide_mission(player)
+    enemy_action = None
+    player_action = None
+    mutual_actions = None
+
+    print(enemy_infos['desc_highlight'])
+    pause()
+
+    while True:
+        if player_action:
+            clear_screen()
+            print('You spin the hourglass...')
+            pause()
+        clear_screen()
+        handle_death()
+        if player_action == run:
+            if try_to_run():
+                break
+        if enemy_action == run:
+            print(f'{enemy_infos["enemy"]} runs away.')
+            break
+        if not player_action:
+            print(f'You are facing {enemy_infos["enemy"]}.\n')
+        print(f'Your life: {player.life}\nEnemy\'s Life: {enemy_infos["life"]}')
+        if mutual_actions:
+            print(f'\n{mutual_actions}\n')
+        print(f'\n{player_action}{enemy_action}') if player_action and enemy_action else print()
+        mutual_actions = None
+        print(f'[1] Attack\n[2] Defend\n[3] Use Energy\n[4] Wait\n[5] Run\n[S] Status\n')
+
+        player_action, enemy_action = handle_user_input(enemy_infos, player, get_user_input())
+        if player_action is not None and enemy_action is not None:
+            mutual_actions, player_action, enemy_action = status_modify(player_action, enemy_action)
+
+
+def decide_mission(player):
+    clear_screen()
+
+    def common_modify():
+        var_common_modify = random.randint(0, 5)
+        return var_common_modify
+
+    missions_dict = {
+        1: {
+            'enemy': 'The Rat King',
+            'desc_highlight': 'The sound of heavy footsteps echoes throughout the tower.\n'
+                              'As usual, something creeps through the shadows.\n'
+                              'A great putrid shadow approaches...',
+            'XP': 25
+        },
+        2: {
+            'enemy': 'The Persecutor God',
+            'desc_highlight': 'A slender figure steals through the mist.\n'
+                              'His white eyes shine with a sinister light.\n'
+                              'He approaches, hiding his true identity...',
+            'XP': 30
+        },
+        3: {
+            'enemy': 'The Shadow Beast',
+            'desc_highlight': 'A chilling howl echoes through the darkness.\n'
+                              'A creature of nightmares emerges, its eyes glowing with malice.\n'
+                              'It approaches, demonstrating his colossal size...',
+            'XP': 30
+        },
+        4: {
+            'enemy': 'The Forgotten One',
+            'desc_highlight': 'An ancient being, lost to time, stirs from its slumber.\n'
+                              'Its power is immense, dwarfing anything you have faced before.\n'
+                              'He pursues you, with no memory of who he once was...',
+            'XP': 30
+        },
+        5: {
+            'enemy': 'The Taken King',
+            'desc_highlight': 'A chilling silence falls over the tower.\n'
+                              'A figure of regal stature emerges, his presence commanding and intimidating.\n'
+                              'He approaches, his eyes filled with a determination that'
+                              '\nsends shivers down your spine...',
+            'XP': 50
+        }
+    }
+    enemy_type = random.randint(1, 5)
+    mi_di = missions_dict[enemy_type]
+    xp = mi_di['XP']
+    mi_di['life'] = player.life + common_modify() + xp // 5
+    mi_di['attack'] = player.attack - common_modify() + xp // 10
+    mi_di['defense'] = player.defense + common_modify() + xp // 10
+    mi_di['energy'] = player.energy - common_modify() + xp // 10
+    return mi_di
+
+
+# -----------------------------------------------
+
 
 def choose_area(area, player):
     def areas():
         game_areas = {
-            'bedroom': {1: mirror, 2: wardrobe, 3: bed, 4: window, 5: door},
-            'house': {1: work, 2: mission, 3: status, 4: store, 5: bedroom}
+            'bedroom': {'1': mirror, '2': wardrobe, '3': bed, '4': window, '5': door},
+            'house': {'1': work, '2': mission, '3': status, '4': store, '5': bedroom}
         }
         selected_area = game_areas[area]
         print()
@@ -92,34 +396,38 @@ def choose_area(area, player):
 
     x = areas()
 
-    resp1 = int(input("Choose an option and press ENTER: "))
+    resp1 = input("Choose an option and press ENTER: ")
 
     for i, value in x.items():
         if i == resp1:
             value(player)
             return True
 
-    invalid()
     return False
 
 
-def armors():
-    armors_list: dict[
-        str, dict[str, str, str | int | bool] | dict[str, str | int | bool] | dict[str, str | int | bool]] = {
-        '1': {'ID': 'A1', 'name': 'Sevastopol Suit', 'DEF': 5,
-              'Desc': 'A common suit for Sevastopol soldiers.'
-                      'Usually used as a means of defense in '
-                      'combat against ultra-humans, can protect '
-                      'from a few attacks. ',
-              'acquired': True,
-              'value': 0},
-        '2': {'ID': 'A2', 'name': 'Exo-suit', 'DEF': 10, 'Desc': '', 'acquired': False, 'value': 100},
-        '3': {'ID': 'A3', 'name': 'Nano Tech Armor', 'DEF': 15, 'Desc': '', 'acquired': False, 'value': 500},
+# -----------------------------------------------
+# ARMORS LIST
+
+
+def armors_desc(item):
+    armors_desc_info = {
+        'Sevastopol Suit': 'A common suit for Sevastopol soldiers.\n'
+                           'Usually used as a means of defense in '
+                           'combat against ultra-humans,\ncan protect '
+                           'from a few attacks.',
+        'Exo-suit': 'An advanced suit equipped with exoskeleton technology.\n'
+                    'It provides enhanced strength and durability,\nmaking it '
+                    'ideal for heavy combat situations.',
+        'Nano Tech Armor': 'A state-of-the-art armor infused with nanotechnology.\n'
+                           'It can self-repair and adapt to various types of damage,\n'
+                           'offering superior protection on the battlefield.'
     }
-    return armors_list
+    return armors_desc_info[item]
 
 
 # -----------------------------------------------
+# BED
 
 # save_game_bedroom(player) is a function that is called when the player decides to save the game.
 def save_game_bedroom(player) -> None:
@@ -148,75 +456,83 @@ def store(player) -> None:
     while True:
         clear_screen()
         line("STORE")
-        print()
+        print(f'\n"Welcome back {player.name}. How can I help you?"\n'
+              f'Says the old salesman with a malicious smile on his face.\n'
+              f'He knows you don\'t have many options.\n')
         print(f"Money: {player.money}\n")
-        for i, value in armors().items():
+        for i, value in player.armors.items():
             if not value['acquired']:
-                print(f"[{i}] {value['name']}")
+                print(f"[{i}] {value['name']} |  Price: {value['value']}")
         print(f'[X] Exit\n')
         resp1 = input("Choose an option and press ENTER: ")
         if resp1.lower() == 'x':
-            bedroom(player)
-        elif resp1 in armors() and not armors()[resp1]['acquired']:
+            house(player)
+        elif resp1 in player.armors and not player.armors[resp1]['acquired']:
             while True:
                 clear_screen()
-                print(f'{armors()[resp1]['name']}:\n')
-                print(f'{armors()[resp1]['Desc']}\n\nBuy armor? [Y/N]')
+                print(f'{player.armors[resp1]['name']}:\n')
+                print(f'Price: {player.armors[resp1]["value"]}\n')
+                print(f'{player.armors[resp1]['Desc']}\n\nBuy armor? [Y/N]')
                 resp2 = input('Choose an option and press ENTER: ')
                 if resp2.lower() == 'y':
-                    if player.money >= armors()[resp1]['value']:
-                        player.money -= armors()[resp1]['value']
+                    if player.money >= player.armors[resp1]['value']:
+                        player.money -= player.armors[resp1]['value']
                         player.armors_quantity += 1
-                        armors()[resp1]['acquired'] = True
+                        player.armors[resp1]['acquired'] = True
                         store(player)
                     else:
-                        print('\nYou don\'t have enough money.\n')
+                        print('\nYou don\'t have enough money.')
                         pause()
                         store(player)
                 elif resp2.lower() == 'n':
                     store(player)
                 else:
                     invalid()
+        else:
+            invalid()
 
 
 # -----------------------------------------------
 
 def window(player) -> None:
-    clear_screen()
-    window_events = {
-        '1': {'name': 'Close the window', 'desc': 'You close the window and the room becomes dark again.',
-              'state': "YELLOW"},
-        '2': {'name': 'Look outside', 'desc': 'The window shows the image of a world in ruins.'
-                                              '\nThe sky is red and the ground is covered with debris.'
-                                              '\nThe sun is hidden behind the clouds as if it were afraid of the world.'
-                                              '\nThe wind blows cold and strong as if it were trying to take '
-                                              'everything with it.',
-              'state': "YELLOW"},
-        '3': {'name': 'Open the window', 'desc': 'You open the window and the room becomes bright.'
-                                                 '\nThe light shines through the window, illuminating the room.',
-              'state': "BLUE"},
-    }
-    for i, value in window_events.items():
-        if value['state'] == player.bedroom_color:
-            print(f"[{i}] {value['name']}")
-        else:
-            print(f"[{i}] {value['name']}")
-
-    print()
-    resp1 = input("Choose an option and press ENTER: ")
-    if resp1 in window_events and window_events[resp1]['state'] == player.bedroom_color:
+    while True:
         clear_screen()
-        if window_events[resp1]['name'] == 'Close the window':
-            color("BLUE")
-            player.bedroom_color = "BLUE"
-        elif window_events[resp1]['name'] == 'Open the window':
-            color("YELLOW")
-            player.bedroom_color = "YELLOW"
-        print(window_events[resp1]['desc'])
-        pause()
-    else:
-        invalid()
-    bedroom(player)
+        print(f'The window with a yellowish white frame appears to open by itself\n'
+              f'at night. You know this is a lie.\n')
+        window_events = {
+            '1': {'name': 'Close the window', 'desc': 'You close the window and the room becomes dark again.',
+                  'state': "YELLOW"},
+            '2': {'name': 'Look outside', 'desc': 'The window shows the image of a world in ruins.'
+                                                  '\nThe sky is red and the ground is covered with debris.'
+                                                  '\nThe sun is hidden behind the clouds as if it were afraid of the '
+                                                  'world.'
+                                                  '\nThe wind blows cold and strong as if it were trying to take '
+                                                  'everything with it.',
+                  'state': "YELLOW"},
+            '3': {'name': 'Open the window', 'desc': 'You open the window and the room becomes bright.'
+                                                     '\nThe light shines through the window, illuminating the room.',
+                  'state': "BLUE"},
+        }
+        for i, value in window_events.items():
+            if value['state'] == player.bedroom_color:
+                print(f"[{i}] {value['name']}")
+        print(f'[X] Exit\n')
+        resp1 = input("Choose an option and press ENTER: ")
+        if resp1.lower() == 'x':
+            bedroom(player)
+        elif resp1 in window_events and window_events[resp1]['state'] == player.bedroom_color:
+            clear_screen()
+            if window_events[resp1]['name'] == 'Close the window':
+                color("BLUE")
+                player.bedroom_color = "BLUE"
+            elif window_events[resp1]['name'] == 'Open the window':
+                color("YELLOW")
+                player.bedroom_color = "YELLOW"
+            print(window_events[resp1]['desc'])
+            pause()
+            window(player)
+        else:
+            invalid()
 
 
 def bed(player) -> None:
@@ -232,10 +548,12 @@ def bed(player) -> None:
               'Enough running away from problems.\n')
         for i, VALUE in options.items():
             print(f"[{i}] {'Save Game' if VALUE['name'] == save_game_bedroom else 'Exit Game'}")
-        print()
+        print("[X] Exit\n")
         resp1 = input("Choose an option and press ENTER: ")
 
-        if resp1 in options:
+        if resp1.lower() == 'x':
+            bedroom(player)
+        elif resp1 in options:
             print("\n" + options[resp1]['desc'])
             resp2 = input("Choose an option and press ENTER: ")
             if resp2.lower() == 'y':
@@ -279,25 +597,24 @@ def wardrobe(player) -> None:
             'Ultra-Human': {1: f'{common_lines['Common'][1]}'}
         }
         print(lines[player.race][player.armors_quantity] + '\n')
-        for i, value in armors().items():
+        for i, value in player.armors.items():  # Use player.armors directly
             if value['ID'] == player.armor_id:
                 print(f'Selected Armor: {value['name']}\n')
             if value['acquired']:
                 print(f"[{i}] {value['name']}")
         print(f'[X] Exit\n')
-        print()
         resp1 = input("Choose an option and press ENTER: ")
         if resp1.lower() == 'x':
             bedroom(player)
-        elif resp1 in armors() and armors()[resp1]['acquired']:
+        elif resp1 in player.armors and player.armors[resp1]['acquired']:
             while True:
                 clear_screen()
-                print(f'{armors()[resp1]['name']}:\n')
-                print(f'{armors()[resp1]['Desc']}\n\nSelect armor? [Y/N]')
+                print(f'{player.armors[resp1]['name']}:\n')
+                print(f'{player.armors[resp1]['Desc']}\n\nSelect armor? [Y/N]')
                 resp2 = input('Choose an option and press ENTER: ')
                 if resp2.lower() == 'y':
-                    player.armor_id = armors()[resp1]['ID']
-                    player.defense = armors()[resp1]['DEF']
+                    player.armor_id = player.armors[resp1]['ID']
+                    player.defense = player.armors[resp1]['DEF']
                     bedroom(player)
                 elif resp2.lower() == 'n':
                     break
@@ -310,24 +627,24 @@ def wardrobe(player) -> None:
 # Preciso fazer pelo menos 5 eventos de trabalho.
 def work(player) -> None:
     clear_screen()
-    player.days += 1
-    darkness_level = math.floor(player.darkness)
+    player.money += random.randint(8, 15)
+    darkness_level = max(1, math.floor(player.darkness))
     work_events = {
         1: {
-            'event': 'Your superior requests you to stay beyond working hours.'
-                     'He insists the reports are overdue, but you distinctly'
-                     'remember completing them a few days prior. You communicate this, but'
+            'event': 'Your superior requests you to stay beyond working hours.\n'
+                     'He insists the reports are overdue, but you distinctly\n'
+                     'remember completing them a few days prior. You communicate this, but\n'
                      'he insists on new ones.',
             1: 'Concerned about job security, you comply and redo all your work.'
         },
         2: {
-            'event': 'A colleague invites you for a private discussion.'
-                     'He accuses you of involvement in pagan rituals in secluded places and structures.'
-                     'His only evidence is a photograph of you exiting an abandoned tower.'
-                     'While the photo is accurate, he seems to have misconstrued the true nature'
+            'event': 'A colleague invites you for a private discussion.\n'
+                     'He accuses you of involvement in pagan rituals in secluded places and structures.\n'
+                     'His only evidence is a photograph of you exiting an abandoned tower.\n'
+                     'While the photo is accurate, he seems to have misconstrued the true nature\n'
                      'of your activities.',
-            1: 'To circumvent complications, you convince him of the cult idea.'
-               'He agrees to leave you alone if you cover his shifts for the rest of the week.'
+            1: 'To circumvent complications, you convince him of the cult idea.\n'
+               'He agrees to leave you alone if you cover his shifts for the rest of the week.\n'
                'There seems to be no better alternative.'
         }
     }
@@ -337,14 +654,11 @@ def work(player) -> None:
               f'Even the worst monster is most trustworthy.')
         pause()
         clear_screen()
-    temp = random.randint(1, 5)
-    print(f'{work_events[temp]['evento']} + "\n" {work_events[temp][darkness_level]}')
+    temp = random.randint(1, 2)
+    print(f'{work_events[temp]['event']}\n{work_events[temp][darkness_level]}')
     pause()
-
-
-def mission(player):
-    clear_screen()
-    pause()
+    player.days += 1
+    house(player)
 
 
 def door(player) -> None:
@@ -356,15 +670,16 @@ def door(player) -> None:
 def status(player) -> None:
     clear_screen()
     print(
-        f"You are a {player.race} who fights using {player.combat} and comes from the {player.origin_name}. "
+        f"You are a {player.race} who fights using {player.combat}\n and comes from the {player.origin_name}. "
         f"Your name is {player.name}.\n")
-    print(f"Level: {player.level} | Experience: {player.experience_cap}/{player.experience}\n"
+    print(f"Level: {player.level} | Experience: {player.experience}/{player.experience_cap}\n"
           f"Life: {player.life}\n"
           f"Defense: {player.defense}\n"
           f"Attack: {player.attack}\n"
           f"Energy: {player.energy}\n")
-    print(f'It must be strange to use this voltage meter to measure your power...'
-          f'well, whatever.')
+    print(f"Day: {player.days}\n")
+    # print(f'It must be strange to use this voltage meter to measure your power...'
+    #       f'well, whatever.')
     pause()
     house(player)
 
@@ -377,7 +692,7 @@ def basic_choose_area(player, bc_area) -> None:
         if x:
             break
         else:
-            pass
+            invalid()
 
 
 def house(player) -> None:
@@ -386,6 +701,7 @@ def house(player) -> None:
 
 
 def bedroom(player) -> None:
+    player.verify_level_up()
     color(player.bedroom_color)
     basic_choose_area(player, 'bedroom')
 
@@ -521,16 +837,16 @@ def choose_class(player):
         print()
         resp1 = input("Choose an option and press ENTER: ")
         if resp1 in combat_types:
-            combat = combat_types[resp1]['combat']
+            combat_name = combat_types[resp1]['combat']
             combat_type = combat_types[resp1]['combat_type']
             combat_desc = combat_types[resp1]['desc']
             clear_screen()
             print(
-                f"You are a {player.race} who fights using {combat}.\n\n{combat_desc}\n\n"
+                f"You are a {player.race} who fights using {combat_name}.\n\n{combat_desc}\n\n"
                 f"Are you sure of your choice? [Y/N]")
             resp2 = input("Choose an option and press ENTER: ")
             if resp2.lower() == 'y':
-                return player, combat, combat_type, combat_desc
+                return player, combat_name, combat_type, combat_desc
             elif resp2.lower() == 'n':
                 pass
             else:
@@ -771,13 +1087,25 @@ def menu() -> None:
     line_down(" ┻ ┛┗┗┛  ┛ ┗┗┛┛┗ ┻ ┛┗┗┛  ┗┻┛┗┛┛┗┗┛┻┛")
     print()
     print("[1] Start the Game")
-    print("[2] Quit")
+    if os.path.exists('tmw_save_game.dat'):
+        print('[2] Load Game')
+        print("[3] Quit")
+    else:
+        print("[2] Quit")
     print()
     response = input("Choose an option and press ENTER: ")
     if response == "1":
         play()
+    elif response == "2" and os.path.exists('tmw_save_game.dat'):
+        with open('tmw_save_game.dat', 'rb') as file:
+            player = pickle.load(file)
+        bedroom(player)
     elif response == "2":
         force_exit()
+    elif response == "3" and os.path.exists('tmw_save_game.dat'):
+        force_exit()
+    else:
+        invalid()
 
 
 menu()

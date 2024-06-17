@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The Mental World: New World is a batch-first text RPG game, but
+The Mental World: Mind Illness is a batch-first text RPG game, but
 then ported to python for performance reasons and ease of development.
 During the language transition, the original idea for the game was gradually
 modified, especially with regard to history and game mechanics. These

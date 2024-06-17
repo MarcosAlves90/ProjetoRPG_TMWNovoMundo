@@ -21,10 +21,12 @@ class Player:
                  origin=None,
                  origin_name=None,
                  origin_desc=None,
-                 life=None,
-                 defense=None,
-                 attack=None,
-                 energy=None,
+                 life=15,
+                 max_life=0,
+                 defense=5,
+                 attack=5,
+                 energy=10,
+                 max_energy=0,
                  darkness=0.00,
                  armors_quantity=1,
                  armor_id='A1',
@@ -53,11 +55,18 @@ class Player:
         self.origin_name = origin_name
         self.origin_desc = origin_desc
         # --------------------------
-        # STATUS
+        # LIFE
         self.life = life
+        self.max_life = max_life
+        # --------------------------
+        # DEFENSE AND ATTACK
         self.defense = defense
         self.attack = attack
+        # ENERGY
         self.energy = energy
+        self.max_energy = max_energy
+        # --------------------------
+        # DARKNESS
         self.darkness = darkness
         # --------------------------
         # STORE AND WARDROBE
@@ -88,11 +97,14 @@ class Player:
             self.level += 1
             self.experience -= self.experience_cap
             self.experience_cap = self.level * 100
-            self.life += 5
-            self.defense += 5
-            self.attack += 5
-            self.energy += 5
-            # add level up message
+            self.max_life = self.life + 5
+            self.defense = self.defense + 5
+            self.attack = self.defense + 5
+            self.max_energy = self.energy + 5
+            clear_screen()
+            print('Humiliation made him superior...\n'
+                  'You have reached a new level.')
+            pause()
 
 
 # -----------------------------------------------
@@ -107,7 +119,7 @@ def mission(player) -> None:
     print(f'[1] Accept mission\n[X] Exit\n')
     resp1 = input("Choose an option and press ENTER: ")
     if resp1 == '1':
-        combat(player)
+        tower_combat(player)
     elif resp1.lower() == 'x':
         house(player)
     else:
@@ -117,51 +129,103 @@ def mission(player) -> None:
 def enemy_reactions(enemy_infos, reaction_type, reaction_category):
     reactions_dict = {
         'm': {
-            'attack': f'{enemy_infos["enemy"]} attacks you without showing any remorse.\n',
-            'defense': f'{enemy_infos["enemy"]} defends himself, he believes you will never be able to hit him.\n',
-            'energy': f'{enemy_infos["enemy"]} uses energy, preventing you from escaping the tower.\n',
-            'run': f'{enemy_infos["enemy"]} runs away, leaving you without your precious sand.\n',
-            'wait': f'{enemy_infos["enemy"]} waits, observing your every move.\n'
+            'attack': [
+                f'{enemy_infos["enemy"]} attacks you without showing any remorse.\n',
+                f'{enemy_infos["enemy"]} launches a fierce attack towards you.\n',
+                f'{enemy_infos["enemy"]} attacks with a savage roar.\n'
+            ],
+            'defense': [
+                f'{enemy_infos["enemy"]} defends himself, believes you will never be able to hit him.\n',
+                f'{enemy_infos["enemy"]} raises its guard, preparing for its attack.\n',
+                f'{enemy_infos["enemy"]} deftly dodges your attacks.\n'
+            ],
+            'energy': [
+                f'{enemy_infos["enemy"]} uses energy, preventing you from escaping the tower.\n',
+                f'{enemy_infos["enemy"]} channels his energy, creating a barrier around him.\n',
+                f'{enemy_infos["enemy"]} releases a wave of energy towards you.\n'
+            ],
+            'run': [
+                f'{enemy_infos["enemy"]} tries to run away, but fails.\n',
+                f'{enemy_infos["enemy"]} attempts to escape, but stumbles.\n',
+                f'{enemy_infos["enemy"]} fails to flee the battle.\n'
+            ],
+            'wait': [
+                f'{enemy_infos["enemy"]} waits, watching your every move.\n',
+                f'{enemy_infos["enemy"]} remains silent, studying his actions.\n',
+                f'{enemy_infos["enemy"]} does nothing, just watches you cautiously.\n'
+            ]
         },
         'p': {
-            'attack': f'You attack {enemy_infos["enemy"]} without showing any remorse.\n',
-            'defense': f'You defend yourself, believing that {enemy_infos["enemy"]} will never be able to reach you.\n',
-            'energy': f'You use energy, preventing {enemy_infos["enemy"]} from escaping the tower.\n',
-            'run': f'You run away, leaving {enemy_infos["enemy"]} without its precious sand.\n',
-            'wait': f'You wait, watching {enemy_infos["enemy"]}\'s every move.\n'
+            'attack': [
+                f'You attack {enemy_infos["enemy"]} without showing any remorse.\n',
+                f'You launch a fierce attack towards {enemy_infos["enemy"]}.\n',
+                f'You attack {enemy_infos["enemy"]} with a savage roar.\n'
+            ],
+            'defense': [
+                f'You defend yourself, believing that {enemy_infos["enemy"]} will never be able to reach you.\n',
+                f'You raise your guard, preparing for {enemy_infos["enemy"]}\'s attack.\n',
+                f'You skillfully dodge {enemy_infos["enemy"]}\'s attacks.\n'
+            ],
+            'energy': [
+                f'You use energy, preventing {enemy_infos["enemy"]} from escaping the tower.\n',
+                f'You channel your energy, creating a barrier around you.\n',
+                f'You release a wave of energy towards {enemy_infos["enemy"]}.\n'
+            ],
+            'run': [
+                f'You try to run away, but fail.\n',
+                f'You attempt to escape, but stumble.\n',
+                f'You fail to flee the battle.\n'
+            ],
+            'wait': [
+                f'You wait, watching {enemy_infos["enemy"]}\'s every move.\n',
+                f'You remain silent, studying the actions of {enemy_infos["enemy"]}.\n',
+                f'You do nothing, just watch {enemy_infos["enemy"]} cautiously.\n'
+            ]
         }
     }
-    return reactions_dict[reaction_type][reaction_category]
+    return random.choice(reactions_dict[reaction_type][reaction_category])
 
 
-def enemy_ai_learning(player, n):
-    if len(player.enemy_ai) >= 10:
-        player.enemy_ai.insert(0, random.randint(1, n))
-        player.enemy_ai.pop()
-    else:
-        player.enemy_ai.insert(0, random.randint(1, n))
+# def enemy_ai_learning(player, n):
+#     if len(player.enemy_ai) >= 10:
+#         player.enemy_ai.insert(0, random.randint(1, n))
+#         player.enemy_ai.pop()
+#     else:
+#         player.enemy_ai.insert(0, random.randint(1, n))
 
 
 def enemy_ai_reaction(monster, player):
-    reaction_mapping = {1: 2, 2: 3, 3: 4, 4: 1, 5: 5}
+    # reaction_mapping = {1: 2, 2: 3, 3: 4, 4: 1, 5: 5}
+    #
+    # random_action = random.randint(1, 5)
+    # most_common_action = int(collections.Counter(player.enemy_ai).most_common(1)[0][0])
+    # chosen_action = random.choice([random_action, most_common_action])
 
-    random_action = random.randint(1, 5)
-    most_common_action = int(collections.Counter(player.enemy_ai).most_common(1)[0][0])
-    chosen_action = random.choice([random_action, most_common_action])
+    if monster['energy'] == 0:
+        return 4  # Wait
 
-    if monster['life'] <= 10:
-        if monster['energy'] > 0:
-            return 3  # Use energy
+    if player.energy == 0:
+        return 1  # Attack
+
+    if monster['life'] >= monster['max_life'] * 0.5:
+        return 1  # Attack
+
+    if monster['life'] <= monster['max_life'] * 0.5:
+        if monster['energy'] > 5:
+            return 5  # Run
         else:
             return 2  # Defend
 
-    if player.life <= 10:
+    if player.life <= player.max_life * 0.2:
+        if player.energy >= 5:
+            return 3  # Energy
+        else:
+            return 1  # Attack
+
+    if player.life <= player.max_life * 0.5:
         return 1  # Attack
 
-    if monster['energy'] <= 5:
-        return 4  # Wait
-
-    return reaction_mapping[chosen_action]
+    # return reaction_mapping[chosen_action]
 
 
 # -----------------------------------------------
@@ -181,18 +245,26 @@ def handle_user_input(monster, player, input):
     }
 
     if input.lower() in action_mapping:
-        enemy_ai_learning(player, action_mapping[input.lower()])
-        return action_mapping[input.lower()], enemy_ai_reaction(monster, player)
+        if action_mapping[input.lower()] == 's':
+            clear_screen()
+            print(f"Level: {player.level} | Experience: {player.experience}/{player.experience_cap}\n"
+                  f"Life: {player.life}\n"
+                  f"Defense: {player.defense}\n"
+                  f"Attack: {player.attack}\n"
+                  f"Energy: {player.energy}")
+            pause()
+        else:
+            # enemy_ai_learning(player, action_mapping[input.lower()])
+            return action_mapping[input.lower()], enemy_ai_reaction(monster, player)
     else:
         invalid()
-        return None, None
 
 
 # -----------------------------------------------
 
 
-def combat(player):
-
+def tower_combat(player):
+    color("RED")
     attack = 1
     defense = 2
     energy_y = 3
@@ -215,15 +287,25 @@ def combat(player):
             player.days += 2
             print_message_and_win(f'You defeated {enemy_infos["enemy"]}.')
 
+    def print_message_and_run(entity):
+        clear_screen()
+        if entity == 'player':
+            print_text(["You successfully escaped from the tower."])
+        elif entity == 'enemy':
+            print_text([f"{entity['enemy']} successfully escaped from the tower."])
+        pause()
+        player.days += 2
+        house(player)
+
     def print_message_and_win(message):
         clear_screen()
-        print_text(message)
+        print_text([message])
         pause()
         house(player)
 
     def print_message_and_lose(message):
         clear_screen()
-        print_text(message)
+        print_text([message])
         pause()
         force_exit()
 
@@ -239,16 +321,25 @@ def combat(player):
 
         if player_a == action_type:
             player_a = enemy_reactions(enemy_infos, 'p', action_mapping[action_type])
-            if action_type == attack:
-                enemy_infos['life'] -= calculate_damage(player, enemy_infos, True, player_a, enemy_a)
-            elif action_type == energy_y:
+            if action_type == wait:
+                player.energy += 1
+            elif (action_type == attack or action_type == energy_y or action_type == defense) and player.energy >= 1:
                 player.energy -= 1
+                if action_type == attack:
+                    enemy_infos['life'] -= calculate_damage(player, enemy_infos, True, player_a, enemy_a)
+            elif (action_type == attack or action_type == energy_y or action_type == defense) and player.energy == 0:
+                player_a = f'You do not have enough energy to complete your action.\n'
         if enemy_a == action_type:
             enemy_a = enemy_reactions(enemy_infos, 'm', action_mapping[action_type])
-            if action_type == attack:
-                player.life -= calculate_damage(enemy_infos, player, False, player_a, enemy_a)
-            elif action_type == energy_y:
+            if action_type == wait:
+                enemy_infos['energy'] += 1
+            elif ((action_type == attack or action_type == energy_y or action_type == defense)
+                  and enemy_infos['energy'] >= 1):
                 enemy_infos['energy'] -= 1
+                if action_type == attack:
+                    player.life -= calculate_damage(enemy_infos, player, False, player_a, enemy_a)
+            elif (action_type == attack or action_type == energy_y) and enemy_infos['energy'] == 0:
+                enemy_a = f'{enemy_infos["enemy"]} does not have enough energy to complete its action.\n'
 
         return player_a, enemy_a
 
@@ -271,53 +362,65 @@ def combat(player):
 
         return mutual_a, player_a, enemy_a
 
-    def try_to_run():
+    def try_to_run(entity, entity_type):
         energy_needed_to_run = 5
 
-        if player.energy >= energy_needed_to_run:
-            player.energy -= energy_needed_to_run
-            clear_screen()
-            print("You successfully escaped from the battle.")
-            pause()
-            return True
-        else:
-            clear_screen()
-            print("You don't have enough energy to run away.")
-            pause()
-            return False
+        if entity_type == "player" or entity_type == "both":
+            if entity.energy >= energy_needed_to_run:
+                entity.energy -= energy_needed_to_run
+                return True
+        if entity_type == "enemy" or entity_type == "both":
+            if entity['energy'] >= energy_needed_to_run:
+                entity['energy'] -= energy_needed_to_run
+                return True
+        return False
 
     clear_screen()
     enemy_infos = decide_mission(player)
-    enemy_action = None
-    player_action = None
-    mutual_actions = None
+    enemy_action_code, enemy_action = None, None
+    player_action_code, player_action = None, None
+    mutual_actions, dont_show_hourglass = None, None
 
     print(enemy_infos['desc_highlight'])
     pause()
 
     while True:
-        if player_action:
+
+        if player_action and not dont_show_hourglass:
             clear_screen()
             print('You spin the hourglass...')
             pause()
+
         clear_screen()
         handle_death()
-        if player_action == run:
-            if try_to_run():
-                break
-        if enemy_action == run:
-            print(f'{enemy_infos["enemy"]} runs away.')
-            break
+        dont_show_hourglass = False
+
+        if player_action_code == run and enemy_action_code == run:
+            pass
+        elif player_action_code == run:
+            if try_to_run(player, "player"):
+                print_message_and_run('player')
+        elif enemy_action_code == run:
+            if try_to_run(enemy_infos, "enemy"):
+                print_message_and_run('enemy')
+
         if not player_action:
             print(f'You are facing {enemy_infos["enemy"]}.\n')
-        print(f'Your life: {player.life}\nEnemy\'s Life: {enemy_infos["life"]}')
+
+        print(f'Your life: {player.life} | Enemy\'s Life: {enemy_infos["life"]}')
+        print(f'Your energy: {player.energy} | Enemy\'s Energy: {enemy_infos["energy"]}')
         if mutual_actions:
-            print(f'\n{mutual_actions}\n')
+            print(f'\n{mutual_actions}')
         print(f'\n{player_action}{enemy_action}') if player_action and enemy_action else print()
         mutual_actions = None
-        print(f'[1] Attack\n[2] Defend\n[3] Use Energy\n[4] Wait\n[5] Run\n[S] Status\n')
-
-        player_action, enemy_action = handle_user_input(enemy_infos, player, get_user_input())
+        print(f'[1] Attack | [2] Defend\n[3] Energy | [4] Wait\n[5] Run | [S] Status\n')
+        try:
+            player_action, enemy_action = handle_user_input(enemy_infos, player, get_user_input())
+        except TypeError:
+            dont_show_hourglass = True
+            pass
+        player_action_code = player_action
+        enemy_action_code = enemy_action
         if player_action is not None and enemy_action is not None:
             mutual_actions, player_action, enemy_action = status_modify(player_action, enemy_action)
 
@@ -374,6 +477,9 @@ def decide_mission(player):
     mi_di['attack'] = player.attack - common_modify() + xp // 10
     mi_di['defense'] = player.defense + common_modify() + xp // 10
     mi_di['energy'] = player.energy - common_modify() + xp // 10
+    # MAX STATUS
+    mi_di['max_life'] = mi_di['life']
+    mi_di['max_energy'] = mi_di['energy']
     return mi_di
 
 
@@ -436,17 +542,17 @@ def save_game_bedroom(player) -> None:
         pickle.dump(player, file)
     print('Game saved successfully.')
     pause()
-    bedroom(player)
+    return bedroom(player)
 
 
 # exit_game_bedroom(player) is a function that is called when the player decides to quit the game.
-def exit_game_bedroom() -> None:
+def exit_game_bedroom(player=None) -> None:
     phrases_list = ['And once again you running away from problems...',
                     'Nightmares won\'t go away if you don\'t face them.',
                     'Do you think this is really going to help you?',
                     'The world won\'t change just because you\'re tired.',
                     'You should feel sorry for yourself.']
-    exit_game(random.choice(phrases_list))
+    return exit_game(random.choice(phrases_list))
 
 
 # -----------------------------------------------
@@ -552,7 +658,7 @@ def bed(player) -> None:
         resp1 = input("Choose an option and press ENTER: ")
 
         if resp1.lower() == 'x':
-            bedroom(player)
+            return bedroom(player)
         elif resp1 in options:
             print("\n" + options[resp1]['desc'])
             resp2 = input("Choose an option and press ENTER: ")
@@ -580,7 +686,7 @@ def mirror(player) -> None:
     darkness_level = math.floor(player.darkness)
     print(lines[player.race][1 if darkness_level < 1 else darkness_level])
     pause()
-    bedroom(player)
+    return bedroom(player)
 
 
 def wardrobe(player) -> None:
@@ -605,7 +711,7 @@ def wardrobe(player) -> None:
         print(f'[X] Exit\n')
         resp1 = input("Choose an option and press ENTER: ")
         if resp1.lower() == 'x':
-            bedroom(player)
+            return bedroom(player)
         elif resp1 in player.armors and player.armors[resp1]['acquired']:
             while True:
                 clear_screen()
@@ -615,7 +721,7 @@ def wardrobe(player) -> None:
                 if resp2.lower() == 'y':
                     player.armor_id = player.armors[resp1]['ID']
                     player.defense = player.armors[resp1]['DEF']
-                    bedroom(player)
+                    return bedroom(player)
                 elif resp2.lower() == 'n':
                     break
                 else:
@@ -658,26 +764,25 @@ def work(player) -> None:
     print(f'{work_events[temp]['event']}\n{work_events[temp][darkness_level]}')
     pause()
     player.days += 1
-    house(player)
+    return house(player)
 
 
 def door(player) -> None:
     clear_screen()
-    house(player)
-    pause()
+    return house(player)
 
 
 def status(player) -> None:
     clear_screen()
     print(
-        f"You are a {player.race} who fights using {player.combat}\n and comes from the {player.origin_name}. "
+        f"You are a {player.race} who fights using {player.combat}\nand comes from the {player.origin_name}. "
         f"Your name is {player.name}.\n")
     print(f"Level: {player.level} | Experience: {player.experience}/{player.experience_cap}\n"
-          f"Life: {player.life}\n"
+          f"Life: {player.life} | "
           f"Defense: {player.defense}\n"
-          f"Attack: {player.attack}\n"
+          f"Attack: {player.attack} | "
           f"Energy: {player.energy}\n")
-    print(f"Day: {player.days}\n")
+    print(f"Day: {player.days}")
     # print(f'It must be strange to use this voltage meter to measure your power...'
     #       f'well, whatever.')
     pause()
@@ -696,14 +801,17 @@ def basic_choose_area(player, bc_area) -> None:
 
 
 def house(player) -> None:
+    player.verify_level_up()
+    player.life = player.max_life
+    player.energy = player.max_energy
     color("YELLOW")
-    basic_choose_area(player, 'house')
+    return basic_choose_area(player, 'house')
 
 
 def bedroom(player) -> None:
     player.verify_level_up()
     color(player.bedroom_color)
-    basic_choose_area(player, 'bedroom')
+    return basic_choose_area(player, 'bedroom')
 
 
 # -----------------------------------------------
@@ -1012,8 +1120,6 @@ def start_definition(player) -> None:
         "Yesterday was long and stressful, but forgettable, like every other day."
     ])
     pause()
-    player.life = 15
-    player.defense, player.attack, player.energy = 5, 5, 5
     if player.race == 'Human':
         player.life = player.life + player.race_bonus1
         player.defense = player.defense - player.race_bonus2
@@ -1029,6 +1135,8 @@ def start_definition(player) -> None:
     else:
         print('Error: player.race has not been defined.')
         force_exit()
+    player.max_life = player.life
+    player.max_energy = player.energy
     bedroom(player)
 
 

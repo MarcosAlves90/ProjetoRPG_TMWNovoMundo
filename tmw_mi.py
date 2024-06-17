@@ -186,20 +186,19 @@ def enemy_reactions(enemy_infos, reaction_type, reaction_category):
     return random.choice(reactions_dict[reaction_type][reaction_category])
 
 
-# def enemy_ai_learning(player, n):
-#     if len(player.enemy_ai) >= 10:
-#         player.enemy_ai.insert(0, random.randint(1, n))
-#         player.enemy_ai.pop()
-#     else:
-#         player.enemy_ai.insert(0, random.randint(1, n))
+def enemy_ai_learning(player, n):
+    if len(player.enemy_ai) >= 10:
+        player.enemy_ai.insert(0, random.randint(1, n))
+        player.enemy_ai.pop()
+    else:
+        player.enemy_ai.insert(0, random.randint(1, n))
 
 
 def enemy_ai_reaction(monster, player):
-    # reaction_mapping = {1: 2, 2: 3, 3: 4, 4: 1, 5: 5}
-    #
-    # random_action = random.randint(1, 5)
-    # most_common_action = int(collections.Counter(player.enemy_ai).most_common(1)[0][0])
-    # chosen_action = random.choice([random_action, most_common_action])
+    reaction_mapping = {1: 2, 2: 3, 3: 4, 4: 1, 5: 5}
+    random_action = random.randint(1, 5)
+    most_common_action = int(collections.Counter(player.enemy_ai).most_common(1)[0][0])
+    chosen_action = random.choice([random_action, most_common_action])
 
     if monster['energy'] == 0:
         return 4  # Wait
@@ -207,16 +206,16 @@ def enemy_ai_reaction(monster, player):
     if player.energy == 0:
         return 1  # Attack
 
-    if monster['life'] >= monster['max_life'] * 0.5:
-        return 1  # Attack
+    # if monster['life'] >= monster['max_life'] * 0.5:
+    #     return 1  # Attack
 
-    if monster['life'] <= monster['max_life'] * 0.5:
+    if monster['life'] <= monster['max_life'] * 0.2:
         if monster['energy'] > 5:
             return 5  # Run
         else:
             return 2  # Defend
 
-    if player.life <= player.max_life * 0.2:
+    if player.life <= player.max_life * 0.3:
         if player.energy >= 5:
             return 3  # Energy
         else:
@@ -225,7 +224,7 @@ def enemy_ai_reaction(monster, player):
     if player.life <= player.max_life * 0.5:
         return 1  # Attack
 
-    # return reaction_mapping[chosen_action]
+    return reaction_mapping[chosen_action]
 
 
 # -----------------------------------------------
@@ -254,7 +253,7 @@ def handle_user_input(monster, player, input):
                   f"Energy: {player.energy}")
             pause()
         else:
-            # enemy_ai_learning(player, action_mapping[input.lower()])
+            enemy_ai_learning(player, action_mapping[input.lower()])
             return action_mapping[input.lower()], enemy_ai_reaction(monster, player)
     else:
         invalid()
@@ -326,6 +325,7 @@ def tower_combat(player):
             elif (action_type == attack or action_type == energy_y or action_type == defense) and player.energy >= 1:
                 player.energy -= 1
                 if action_type == attack:
+                    player.energy -= 1
                     enemy_infos['life'] -= calculate_damage(player, enemy_infos, True, player_a, enemy_a)
             elif (action_type == attack or action_type == energy_y or action_type == defense) and player.energy == 0:
                 player_a = f'You do not have enough energy to complete your action.\n'
@@ -337,6 +337,7 @@ def tower_combat(player):
                   and enemy_infos['energy'] >= 1):
                 enemy_infos['energy'] -= 1
                 if action_type == attack:
+                    enemy_infos['energy'] -= 1
                     player.life -= calculate_damage(enemy_infos, player, False, player_a, enemy_a)
             elif (action_type == attack or action_type == energy_y) and enemy_infos['energy'] == 0:
                 enemy_a = f'{enemy_infos["enemy"]} does not have enough energy to complete its action.\n'
@@ -696,16 +697,18 @@ def wardrobe(player) -> None:
             'Common': {1: 'It\'s been a while since you bought new clothes.'
                           '\nThe remaining rags are dirty and torn.'}
         }
-        lines = {
-            'Human': {1: f'{common_lines["Common"][1]}'},
-            'Android': {1: f'{common_lines['Common'][1]}'},
-            'Cyborg': {1: f'{common_lines['Common'][1]}'},
-            'Ultra-Human': {1: f'{common_lines['Common'][1]}'}
-        }
-        print(lines[player.race][player.armors_quantity] + '\n')
+        # lines = {
+        #     'Human': {1: f'{common_lines["Common"][1]}'},
+        #     'Android': {1: f'{common_lines['Common'][1]}'},
+        #     'Cyborg': {1: f'{common_lines['Common'][1]}'},
+        #     'Ultra-Human': {1: f'{common_lines['Common'][1]}'}
+        # }
+        # print(lines[player.race][player.armors_quantity] + '\n')
+        print(f'{common_lines['Common'][1]}\n')
         for i, value in player.armors.items():  # Use player.armors directly
             if value['ID'] == player.armor_id:
                 print(f'Selected Armor: {value['name']}\n')
+        for i, value in player.armors.items():
             if value['acquired']:
                 print(f"[{i}] {value['name']}")
         print(f'[X] Exit\n')

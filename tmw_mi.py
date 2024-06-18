@@ -135,7 +135,7 @@ def enemy_reactions(enemy_infos, reaction_type, reaction_category):
                 f'{enemy_infos["enemy"]} attacks with a savage roar.\n'
             ],
             'defense': [
-                f'{enemy_infos["enemy"]} defends himself, believes you will never be able to hit him.\n',
+                f'{enemy_infos["enemy"]} defends himself. He believes you will never be able to hit him.\n',
                 f'{enemy_infos["enemy"]} raises its guard, preparing for its attack.\n',
                 f'{enemy_infos["enemy"]} deftly dodges your attacks.\n'
             ],
@@ -200,14 +200,11 @@ def enemy_ai_reaction(monster, player):
     most_common_action = int(collections.Counter(player.enemy_ai).most_common(1)[0][0])
     chosen_action = random.choice([random_action, most_common_action])
 
-    if monster['energy'] == 0:
+    if monster['energy'] == 0 or monster['energy'] == 1:
         return 4  # Wait
 
     if player.energy == 0:
         return 1  # Attack
-
-    # if monster['life'] >= monster['max_life'] * 0.5:
-    #     return 1  # Attack
 
     if monster['life'] <= monster['max_life'] * 0.2:
         if monster['energy'] > 5:
@@ -223,6 +220,12 @@ def enemy_ai_reaction(monster, player):
 
     if player.life <= player.max_life * 0.5:
         return 1  # Attack
+
+    if monster['life'] <= monster['max_life'] * 0.5 and monster['energy'] >= monster['max_energy'] * 0.5:
+        return 1  # Attack
+
+    if player.life <= player.max_life * 0.5 and monster['energy'] >= monster['max_energy'] * 0.5:
+        return 3  # Attack
 
     return reaction_mapping[chosen_action]
 
@@ -286,12 +289,12 @@ def tower_combat(player):
             player.days += 2
             print_message_and_win(f'You defeated {enemy_infos["enemy"]}.')
 
-    def print_message_and_run(entity):
+    def print_message_and_run(entity, entity_infos):
         clear_screen()
         if entity == 'player':
             print_text(["You successfully escaped from the tower."])
         elif entity == 'enemy':
-            print_text([f"{entity['enemy']} successfully escaped from the tower."])
+            print_text([f"{entity_infos['enemy']} successfully escaped from the tower."])
         pause()
         player.days += 2
         house(player)
@@ -318,17 +321,22 @@ def tower_combat(player):
     def handle_action(player_a, enemy_a, action_type):
         action_mapping = {1: 'attack', 2: 'defense', 3: 'energy', 4: 'wait', 5: 'run'}
 
+        player_energy = f'You do not have enough energy to complete your action.\n'
+        enemy_energy = f'{enemy_infos["enemy"]} does not have enough energy to complete its action.\n'
+
         if player_a == action_type:
             player_a = enemy_reactions(enemy_infos, 'p', action_mapping[action_type])
             if action_type == wait:
                 player.energy += 1
             elif (action_type == attack or action_type == energy_y or action_type == defense) and player.energy >= 1:
                 player.energy -= 1
-                if action_type == attack:
+                if action_type == attack and player.energy >= 2:
                     player.energy -= 1
                     enemy_infos['life'] -= calculate_damage(player, enemy_infos, True, player_a, enemy_a)
-            elif (action_type == attack or action_type == energy_y or action_type == defense) and player.energy == 0:
-                player_a = f'You do not have enough energy to complete your action.\n'
+                elif action_type == attack and player.energy < 2:
+                    player_a = player_energy
+            elif (action_type == attack or action_type == energy_y or action_type == defense) and player.energy < 1:
+                player_a = player_energy
         if enemy_a == action_type:
             enemy_a = enemy_reactions(enemy_infos, 'm', action_mapping[action_type])
             if action_type == wait:
@@ -336,11 +344,13 @@ def tower_combat(player):
             elif ((action_type == attack or action_type == energy_y or action_type == defense)
                   and enemy_infos['energy'] >= 1):
                 enemy_infos['energy'] -= 1
-                if action_type == attack:
+                if action_type == attack and enemy_infos['energy'] >= 2:
                     enemy_infos['energy'] -= 1
                     player.life -= calculate_damage(enemy_infos, player, False, player_a, enemy_a)
-            elif (action_type == attack or action_type == energy_y) and enemy_infos['energy'] == 0:
-                enemy_a = f'{enemy_infos["enemy"]} does not have enough energy to complete its action.\n'
+                elif action_type == attack and enemy_infos['energy'] < 2:
+                    enemy_a = enemy_energy
+            elif (action_type == attack or action_type == energy_y) and enemy_infos['energy'] < 1:
+                enemy_a = enemy_energy
 
         return player_a, enemy_a
 
@@ -403,7 +413,7 @@ def tower_combat(player):
                 print_message_and_run('player')
         elif enemy_action_code == run:
             if try_to_run(enemy_infos, "enemy"):
-                print_message_and_run('enemy')
+                print_message_and_run('enemy', enemy_infos)
 
         if not player_action:
             print(f'You are facing {enemy_infos["enemy"]}.\n')
